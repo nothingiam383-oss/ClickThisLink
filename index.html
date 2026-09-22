@@ -128,11 +128,12 @@ const celebration=document.getElementById('celebration'),cc=document.getElementB
   running=true;
   const ctx=cc.getContext('2d',{alpha:false});
   ctx.imageSmoothingEnabled=true;
-  let w=innerWidth,h=innerHeight,dpr=1,rockets=[],parts=[],stars=[],last=0,elapsed=0,nextBurst=0,explosions=0;
-  const maxParticles=900;
-  const palette=['#ff6fb5','#c8a7ff','#6ee7ff','#ffd166','#ffffff','#ff9f68'];
+  let w=innerWidth,h=innerHeight,dpr=1,rockets=[],parts=[],stars=[],last=0,elapsed=0,nextBurst=0,explosions=0,frameSkip=0;
+  const mobile=innerWidth<=700 || (navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=4);
+  const maxParticles=mobile?360:620;
+  const palette=['#ff1493','#ff3b9d','#ff69b4','#ff85c1','#ffb6d9','#ffffff'];
   function resize(){
-    dpr=Math.min(window.devicePixelRatio||1,1.5);
+    dpr=mobile?1:Math.min(window.devicePixelRatio||1,1.25);
     w=innerWidth; h=innerHeight;
     cc.width=Math.floor(w*dpr); cc.height=Math.floor(h*dpr);
     cc.style.width=w+'px'; cc.style.height=h+'px';
@@ -140,7 +141,7 @@ const celebration=document.getElementById('celebration'),cc=document.getElementB
   }
   resize();
   addEventListener('resize',resize,{passive:true});
-  for(let i=0;i<90;i++) stars.push({x:Math.random()*w,y:Math.random()*h,r:.3+Math.random()*.9,a:.2+Math.random()*.6});
+  for(let i=0;i<(mobile?35:60);i++) stars.push({x:Math.random()*w,y:Math.random()*h,r:.3+Math.random()*.9,a:.2+Math.random()*.6});
 
   // One reusable, lightweight firework sound buffer — avoids generating large audio buffers on every explosion.
   let audioCtx=null,noiseBuffer=null,lastSound=0;
@@ -177,7 +178,7 @@ const celebration=document.getElementById('celebration'),cc=document.getElementB
   }
   function explode(r){
     explosions++;
-    const count=Math.min(120,Math.max(80,Math.floor(w*h/11000)));
+    const count=mobile?Math.min(55,Math.max(38,Math.floor(w*h/22000))):Math.min(90,Math.max(60,Math.floor(w*h/15000)));
     for(let i=0;i<count && parts.length<maxParticles;i++){
       const a=Math.random()*Math.PI*2,s=1.25+Math.random()*4.3;
       parts.push({x:r.x,y:r.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0,max:42+Math.random()*42,c:r.color,size:.8+Math.random()*1.5,tw:Math.random()*6.28});
@@ -186,17 +187,18 @@ const celebration=document.getElementById('celebration'),cc=document.getElementB
       const a=Math.random()*Math.PI*2,s=1+Math.random()*2.2;
       parts.push({x:r.x,y:r.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0,max:65+Math.random()*25,c:'#fff4d2',size:.6+Math.random()*.7,tw:0});
     }
-    if(explosions<18) fireworkSound();
+    if(explosions<12) fireworkSound();
   }
   function frame(t){
     if(!running) return;
+    if(mobile && (++frameSkip%2)) { raf=requestAnimationFrame(frame); return; }
     if(!last) last=t;
     const dt=Math.min(24,t-last); last=t; elapsed+=dt;
     ctx.globalCompositeOperation='source-over';
     ctx.fillStyle='rgba(3,3,8,.18)'; ctx.fillRect(0,0,w,h);
     ctx.shadowBlur=0;
     for(const s of stars){ctx.globalAlpha=s.a;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-    if(elapsed<6500 && t>nextBurst){rocket();if(Math.random()<.25) rocket();nextBurst=t+360+Math.random()*420;}
+    if(elapsed<15000 && t>nextBurst){rocket();if(Math.random()<.25) rocket();nextBurst=t+(mobile?650:430)+Math.random()*(mobile?500:420);}
     for(let i=rockets.length-1;i>=0;i--){
       const r=rockets[i]; r.y+=r.vy*dt/16; r.vy+=.03*dt/16;
       ctx.globalAlpha=1;ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(r.x,r.y,2,0,Math.PI*2);ctx.fill();
@@ -212,7 +214,7 @@ const celebration=document.getElementById('celebration'),cc=document.getElementB
     ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
     raf=requestAnimationFrame(frame);
   }
-  for(let i=0;i<4;i++) setTimeout(rocket,i*180);
+  for(let i=0;i<(mobile?2:4);i++) setTimeout(rocket,i*260);
   raf=requestAnimationFrame(frame);
 }
 function hideCelebration(){running=false;cancelAnimationFrame(raf);rockets=[];parts=[];celebration.style.display='none';celebration.setAttribute('aria-hidden','true')}close.onclick=hideCelebration;
@@ -317,6 +319,18 @@ body.experience-locked #gate{position:fixed;inset:0;z-index:99999;width:100%;hei
 body.experience-unlocked{overflow-x:hidden;overflow-y:auto;height:auto;touch-action:auto;}
 #gate.gate-opening{animation:gateFade .75s ease forwards;}
 @keyframes gateFade{to{opacity:0;transform:scale(1.02);visibility:hidden;}}
+
+@media (max-width:700px){
+  .gate-shell{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 18px 45px rgba(0,0,0,.35);}
+  .orb{filter:blur(18px);opacity:.22;}
+  .poster{box-shadow:0 18px 40px rgba(0,0,0,.28),inset 0 0 30px rgba(255,255,255,.02);}
+  .letter-card{box-shadow:0 18px 45px rgba(0,0,0,.3);}
+  .memory-grid{box-shadow:inset 0 0 24px rgba(255,171,211,.04),0 16px 40px rgba(0,0,0,.2);}
+  .sf-rocket,.sf-spark,.sf-trail{filter:none!important;}
+  .sf-rocket{box-shadow:0 0 4px 1px #fff,0 0 9px 3px currentColor;}
+  .sf-rocket:after{filter:blur(3px);}
+  .sf-spark{box-shadow:0 0 5px 1px currentColor;}
+}
 </style>
 <div id="super-firework-finale"></div>
 <script>
@@ -359,8 +373,8 @@ body.experience-unlocked{overflow-x:hidden;overflow-y:auto;height:auto;touch-act
  }
  function makeTrail(x,y,color){if(layer.children.length>=MAX)return;const t=document.createElement('i');t.className='sf-trail';t.style.color=color;t.style.background=color;t.style.left=x+'px';t.style.top=y+'px';layer.appendChild(t);const st=performance.now(),dur=250+Math.random()*300;function q(now){const p=Math.min(1,(now-st)/dur);t.style.transform=`translate(${(Math.random()-.5)*5}px,${p*24}px) scale(${1-p})`;t.style.opacity=String(.85*(1-p));if(p<1&&active)requestAnimationFrame(q);else t.remove()}requestAnimationFrame(q)}
  function wave(){if(!active)return;const n=5+Math.floor(Math.random()*5);for(let i=0;i<n;i++)setTimeout(rocket,i*55+Math.random()*50)}
- window.startSuperFireworkFinale=function(){if(active)return;started=true;active=true;layer.classList.add('active');let cycles=0;const runCycle=()=>{if(!active)return;cycles++;wave();timer=setInterval(wave,330);setTimeout(()=>{for(let i=0;i<24;i++)setTimeout(rocket,i*48+Math.random()*35)},3600);setTimeout(()=>{clearInterval(timer);timer=null;if(cycles<3){setTimeout(runCycle,900)}else{active=false;setTimeout(()=>layer.classList.remove('active'),1800)}},8200)};runCycle()};
- ['showWin','showVictory','winGame','showCelebration','startCelebration'].forEach(name=>{const old=window[name];if(typeof old==='function'&&!old.__sf){const wrap=function(){const r=old.apply(this,arguments);try{window.startSuperFireworkFinale()}catch(e){}return r};wrap.__sf=true;window[name]=wrap}});
+ window.startSuperFireworkFinale=function(){return;};
+ ['showWin','showVictory','winGame','showCelebration','startCelebration'].forEach(name=>{const old=window[name];if(typeof old==='function'&&!old.__sf){const wrap=function(){const r=old.apply(this,arguments);return r};wrap.__sf=true;window[name]=wrap}});
 })();
 </script>
 
